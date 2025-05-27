@@ -1,0 +1,67 @@
+import pandas as pd
+import numpy as np
+import re
+import string
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+import nltk
+
+# Download stopwords
+nltk.download('stopwords')
+from nltk.corpus import stopwords
+
+# Load and prepare data
+data = pd.read_csv('C:\\Users\\vvara\\Movie_reviews.csv', header=None, names=['review', 'sentiment'])
+print(data.head())
+
+# Initialize stop words
+stop_words = stopwords.words('english')
+
+# Text cleaning function
+def preprocess(text):
+    text = text.lower()
+    text = re.sub(r'<[^>]+>', '', text)                # remove HTML tags
+    text = re.sub(r'[^a-z\s]', '', text)               # remove non-alphabet characters
+    tokens = [word for word in text.split() if word not in stop_words]
+    return ' '.join(tokens)
+
+# Apply preprocessing
+data['cleaned_review'] = data['review'].apply(preprocess)
+
+# Map sentiment to binary labels
+data['label'] = data['sentiment'].apply(lambda x: 1 if x == 'positive' else 0)
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(
+    data['cleaned_review'], data['label'], test_size=0.2, random_state=42
+)
+
+# TF-IDF Vectorization
+vectorizer = TfidfVectorizer(max_features=5000)
+X_train_vec = vectorizer.fit_transform(X_train)
+X_test_vec = vectorizer.transform(X_test)
+
+# Train model
+classifier = LogisticRegression()
+classifier.fit(X_train_vec, y_train)
+
+# Predict
+y_pred = classifier.predict(X_test_vec)
+
+# Evaluation
+print("Accuracy:", accuracy_score(y_test, y_pred))
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+# Confusion matrix visualization
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(6, 4))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Greens', xticklabels=['Negative', 'Positive'], yticklabels=['Negative', 'Positive'])
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.tight_layout()
+plt.show()
